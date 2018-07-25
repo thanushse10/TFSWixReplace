@@ -18,12 +18,12 @@ namespace Wix_Replace_Files
         public static ILoggingService logging = null;
         private static LogLevel minLevel = LogLevel.Error;
 
-        private static void SearchSetupFiles(string directory, string WixSource, string[] projectNames = null)
+        private static List<string> SearchSetupFiles(string directory, string WixSource, string[] projectNames = null)
         {
-
+            int projectcount = 0;
             string searchDirectory = string.Empty;
             string SolutionError = string.Empty;
-
+            List<string> ProcessedProjects = new List<string>();
             DirectoryInfo WixSourceDirectory = new DirectoryInfo(WixSource);
             var WixSetup = WixSourceDirectory.GetFiles();
 
@@ -86,6 +86,8 @@ namespace Wix_Replace_Files
                                 {
                                     if (projectFile.Extension.Contains("Setup"))
                                     {
+                                        ProcessedProjects.Add(projectFile.Parent.Name);
+                                        projectcount++;
                                         XmlDocument xmldoc = new XmlDocument();
                                         FileInfo xmlFile = new FileInfo(projectFile.FullName);
                                         string path = "\\";
@@ -191,44 +193,28 @@ namespace Wix_Replace_Files
                                                               ", \r\nchange: " + PendingChange.GetLocalizedStringForChangeType(pendingChange.ChangeType));
                                         }
                                         Console.WriteLine("------------------------------------------------------------");
-                                        Console.WriteLine("\r\nPlease Review your Changes Before Checking in");
-
-                                        ConsoleKey response;
-                                        do
-                                        {
-                                            Console.Write("\r\nAre you sure you want to check in Changes? [y/n] ");
-
-                                            response = Console.ReadKey(false).Key;
-
-                                            if (response != ConsoleKey.Enter)
-                                                Console.WriteLine();
-                                        } while (response != ConsoleKey.Y && response != ConsoleKey.N);
-                                        if (response == ConsoleKey.Y)
-                                        {
-                                            Console.WriteLine("\r\n--- Checking in the items added.\r\n");
-                                            int changesetNumber = workspace.CheckIn(pendingChanges, "Added WebConfig Custom Action for Wix Setup");
-                                            Console.WriteLine("\r\nCheck-In Successfull for: "+projectFile.Name+"\r\n Checked in changeset " + changesetNumber);
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("\r\n Check-in Cancelled...... Exiting !!!! Good Byee :( ");
-                                            break;
-                                        }
+                                        Console.WriteLine("------------------------------------------------------------");
+                                       
 
 
                                     }
                                 }
                             }
-
-                            // break;
+                           
                         }
+                       
                         else
                         {
                             Console.WriteLine("Project File Empty " + SolutionError);
                             LogHelper.WriteErrorMessage("Project File Empty " + SolutionError);
                         }
+                     
+                        // break;
                     }
+                
                 }
+              
+                return ProcessedProjects;
             }
 
 
@@ -272,6 +258,46 @@ namespace Wix_Replace_Files
             workspace.Get();
         }
 
+        private static void TFSCheckin()
+        {
+            Console.WriteLine("\r\nPlease Review your Changes Before Checking in");
+            TfsTeamProjectCollection tpc = new TfsTeamProjectCollection(new Uri("http://vistfs01:8080/tfs/cgi/"));
+
+            // Get a reference to Version Control.
+            VersionControlServer versionControl = tpc.GetService<VersionControlServer>();
+
+            // Listen for the Source Control events.
+            versionControl.NonFatalError += Program.OnNonFatalError;
+            versionControl.Getting += Program.OnGetting;
+            versionControl.BeforeCheckinPendingChange += Program.OnBeforeCheckinPendingChange;
+            versionControl.NewPendingChange += Program.OnNewPendingChange;
+
+            // Create a workspace.
+            // versionControl.DeleteWorkspace("TEST3", versionControl.AuthorizedUser);
+            Workspace workspace = versionControl.GetWorkspace("TEST3", versionControl.AuthorizedUser);
+            PendingChange[] pendingChanges = workspace.GetPendingChanges();
+            ConsoleKey response;
+            do
+            {
+                Console.Write("\r\nAre you sure you want to check in Changes? [y/n] ");
+
+                response = Console.ReadKey(false).Key;
+
+                if (response != ConsoleKey.Enter)
+                    Console.WriteLine();
+            } while (response != ConsoleKey.Y && response != ConsoleKey.N);
+            if (response == ConsoleKey.Y)
+            {
+                Console.WriteLine("\r\n--- Checking in the items added.\r\n");
+                int changesetNumber = workspace.CheckIn(pendingChanges, "Added WebConfig Custom Action for Wix Setup");
+                Console.WriteLine("\r\nCheck-In Successfull \r\n Checked in changeset " + changesetNumber);
+            }
+            else
+            {
+                Console.WriteLine("\r\n Check-in Cancelled...... Exiting !!!! Good Byee :( ");
+              
+            }
+        }
         //private static void ResearchCheckin()
         //{
 
@@ -399,23 +425,137 @@ namespace Wix_Replace_Files
             string WixSource = @"C:\Shared\WixReplace";
             //Format --> ProjectName.ApplicationName
             string[] ProjectNames = {
-                //"CGI.WS.StagingACD.ACD",
-                //"CGI.WS.CSM.CSM",
-                "CGI.WS.RDM.RDM"
-                //"",
-                //"",
-                //"",
-                //"",
-                //"",
-                //"",
-                //"",
-                //""
+                /*-----------------ACCT-------------------*/
+                "CGI.WCF.ACCT.ACCT",
+                "CGI.WCF.FMS.ACCT",  
+                
+                 /*-----------------ACD-------------------*/
+                "CGI.WS.StagingACD.ACD",
+
+                 /*-----------------AES-------------------*/
+                "CGI.WS.AES.AES",
+
+                 /*-----------------APR-------------------*/
+                "CGI.WS.APR.APR",
+
+                 /*-----------------BSI-------------------*/
+                "CGI.WS.BSI.BSI",
+                "CGI.WS.EOD.BSI",
+
+                 /*-----------------Class Library-------------------*/
+                "CGI.WCF.CommonPolicy.PolicyService.ClassLibrary",
+
+                 /*-----------------Common-------------------*/
+                "CGI.WCF.ADService.Common",
+                "CGI.WCF.Email.Common",
+                "CGI.WS.Enterprise.Common",
+                "CGI.WS.Security.Common",
+                "CGI.WS.USPSValidation.Common",
+                "CGI.WS.VIN.Common",
+
+                 /*-----------------CRQ-------------------*/
+                "CGI.WCF.CRQ.CRQ",
+                "CGI.WCF.AgencyPortal.CRQ",
+
+                 /*-----------------CSM-------------------*/
+                "CGI.WS.CSM.CSM",
+                "CGI.UI.Consumer.CSM",
+                "CGI.UI.CSMInquiry.CSM",
+                "CGI.WS.AgencyPortal.CSM",
+
+                 /*-----------------CWS-------------------*/
+                "CGI.WCF.Claims.CWS",
+               // "CGI.WCF.CWS.CWS", -- Removed from TFS
+                "CGI.WCF.CWSPolicy.CL.CWS",
+             //   "CGI.WCF.CWSPolicy.CPE.CWS", ---> Fails
+                "CGI.WCF.CWSPolicy.Manager.CWS",
+                "CGI.WCF.CWSPolicy.PL.CWS",
+                "CGI.WS.EIP.CWS",
+
+                 /*-----------------Dashboard-------------------*/
+                "CGI.WCF.Dashboard.Dashboard",
+
+                 /*-----------------DCT-------------------*/
+                "CGI.WS.InsScore.DCT",
+
+                 /*-----------------DMS-------------------*/
+                "CGI.WS.DMS.DMS",
+                "CGI.WS.eCommission.Email.DMS",
+                "CGI.WS.EXS.DMS",
+                "CGI.WS.PMS2.DMS",
+
+                  /*-----------------EARS-------------------*/
+                "CGI.WS.EARS.EARS",
+
+                  /*-----------------FDS-------------------*/
+                "CGI.WCF.FDS.FDS",
+
+                  /*-----------------GLH-------------------*/
+                "CGI.WS.GLH.GLH",
+
+                  /*-----------------LXN-------------------*/
+                "CGI.WCF.LXN_CC.PL.LXN",
+                "CGI.WCF.LXN_DPFService.LXN",
+                "CGI.WS.LXN_CC.LXN",
+                "CGI.WS.LXN_DPF.LXN",
+
+                  /*-----------------MA_Reporting-------------------*/
+                "CGI.WCF.RMV.MA_Reporting",
+                "CGI.WCF.UMS.MA_Reporting",
+                "CGI.WCF.UMS.CL.MA_Reporting",
+
+                  /*-----------------Maxim-------------------*/
+                "CGI.WCF.MAX.Maxim",
+                "CGI.WS.MAX.Maxim",
+                "Maxim.Ebenezer.Account.WS.Maxim",
+                "Maxim.Ebenezer.Account2.WS.Maxim",
+                "Maxim.Ebenezer.CGI.WS.Maxim",
+                "Maxim.Ebenezer.Find.WS.Maxim",
+                "Maxim.Ebenezer.General.WS.Maxim",
+
+
+                  /*-----------------Payments-------------------*/
+                "CGI.WS.BPS.Payments",
+
+                  /*-----------------RDM-------------------*/
+                "CGI.WS.RDM.RDM",
+
+                  /*-----------------UI-------------------*/
+                "CGI.WCF.Portal.UI"
+
 
             };
+            Console.WriteLine("Total Projects To Process :"+ProjectNames.Count());
+            var pickedProjects = new List<string>();
 
-            Program.SearchSetupFiles(directory, WixSource, ProjectNames);
-            // Program.ResearchCheckin();
+            foreach(var item in ProjectNames)
+            {
+                pickedProjects.Add(item.Substring(0, item.LastIndexOf(".")));
+            }
+
+
+
+
+            var processedProjects =  Program.SearchSetupFiles(directory, WixSource, ProjectNames);
+           
+            var projectsMissed = pickedProjects.Except(processedProjects).ToList();
+            Console.WriteLine("Total Projects Picked for Processing :" + ProjectNames.Count());            
+            Console.WriteLine("Total Project Processed: " + processedProjects.Count);
+            if (projectsMissed != null && projectsMissed.Count>0)
+            {
+                Console.WriteLine("Projects Not Processed:  "+string.Join(", ",projectsMissed));
+            }
+            else
+            {
+                Console.WriteLine("------------------------------------------------------------");
+                Console.WriteLine("-----------------All Projects Successfully Edited----------------------------");
+                TFSCheckin();
+                Console.WriteLine("------------------------------------------------------------");
+                // Program.ResearchCheckin();
+              
+            }
             Console.ReadLine();
+
         }
     }
 }
